@@ -49,5 +49,40 @@ function megaBomb() {
   killEnemiesAt(game.ship.x, H, 900);
   for (const b of game.eBullets) b.dead = true;
   explode(W / 2, H / 2, 40, true);
-  AudioSys.igiExplode();
-  game.banner = { text: 'MEGA BOMB!Ì*
+  AudioSys.igiExplode())
+
+function usePowerup(kind) {
+  const s = game.ship;
+  AudioSys.powerup();
+  if (kind === 'life') { game.lives = Math.min(9, game.lives + 1); }
+  else if (kind === 'bomb') { megaBomb(); }
+  else {
+    s.powerups[kind] = POWERUP_TYPES[kind].duration;
+  }
+  game.banner = { text: POWERUP_TYPES[kind].label, until: game.time + 1 };
+}
+
+function hitPlayer() {
+  const s = game.ship;
+  if (s.invuln > 0) return;
+  if (s.powerups.shield > 0) {
+    s.powerups.shield = 0;
+    s.invuln = 1;
+    AudioSys.hitShield();
+    explode(s.x, s.y, 10);
+    game.banner = { text: 'SHIELD DOWN!', until: game.time + 1 };
+    return;
+  }
+  game.lives--;
+  explode(s.x, s.y, 26, true);
+  AudioSys.playerDie();
+  game.eBullets = []; // brief mercy period
+  if (game.lives <= 0) {
+    gameOver();
+  } else {
+    s.x = W / 2; s.y = H - 70;
+    s.invuln = 2.5;
+    s.powerups.spread = 0; s.powerups.rapid = 0; // lose weapons, keep nothing
+  }
+}
+
