@@ -16,12 +16,12 @@ const POWERUP_TYPES = {
   bomb:    { color: '#ff6b1a', glyph: 'B', label: 'MEGA BOMB', duration: 0 },
 };
 
-// ----------------------------------------------------------------- canvas
+// ---------------------------------------------------------------- canvas
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 
-// ----------------------------------------------------------------- DOM
+// ---------------------------------------------------------------- DOM
 const el = {
   titleScreen:   document.getElementById('title-screen'),
   gameoverScreen:document.getElementById('gameover-screen'),
@@ -36,7 +36,7 @@ const el = {
   saveMsg:       document.getElementById('save-msg'),
 };
 
-// ----------------------------------------------------------------- audio (synth SFX)
+// ---------------------------------------------------------------- audio (synth SFX)
 const AudioSys = {
   ctx: null, master: null, enabled: true,
 

@@ -1,4 +1,4 @@
-// ----------------------------------------------------------------- input
+// ---------------------------------------------------------------- input
 const keys = {};
 let spaceHeld = false, spacePressedEdge = false;
 
@@ -9,7 +9,7 @@ addEventListener('keydown', (e) => {
     if (!spaceHeld) spacePressedEdge = true;
     spaceHeld = true;
   }
-  if (e.code === 'Key5') AudioSys.toggle();
+  if (e.code === 'KeyM') AudioSys.toggle();
   if (e.code === 'KeyP' && game.state === STATE.PLAYING) game.state = STATE.PAUSED;
   else if (e.code === 'KeyP' && game.state === STATE.PAUSED) game.state = STATE.PLAYING;
   if (e.code === 'Enter' && game.state === STATE.GAMEOVER) startGame();
@@ -31,13 +31,13 @@ addEventListener('pointerup', () => { pointerFiring = false; pointerX = null; })
 el.startButton.addEventListener('click', () => { AudioSys.init(); AudioSys.resume(); startGame(); });
 el.soundToggle.addEventListener('click', () => { AudioSys.init(); AudioSys.toggle(); });
 
-// ----------------------------------------------------------------- entities
+// ---------------------------------------------------------------- entities
 function makeShip() {
   return {
     x: W / 2, y: H - 70, w: 22, h: 24,
     speed: 260,
     cooldown: 0, fireRate: .18,
-    invuln: 2.2,           // seconds of post-respawn invulnerability
+    invuln: 2.2,          // seconds of post-respawn invulnerability
     alive: true,
     powerups: { spread: 0, rapid: 0, shield: 0 },
     blink: 0,
@@ -74,4 +74,4 @@ for (let i = 0; i < 90; i++) {
   });
 }
 
-// ----------------------------------------------------------------- spawning
+// ---------------------------------------------------------------- spawning

@@ -64,7 +64,7 @@ async function handleScores(request, db) {
 
   if (name.length < 3) return json({ error: 'name must be 3-10 characters' }, 400);
   if (!Number.isFinite(score) || score < 0 || score > MAX_SCORE) {
-    return json({ error: 'invalid score' }, 400); 
+    return json({ error: 'invalid score' }, 400);
   }
 
   // Basic anti-spam: same name may hold only their top 3 entries.

@@ -21,7 +21,9 @@ A retro 80s arcade space shooter built with vanilla Canvas + Web Audio, deployed
 
 ```
 public/index.html   game page, HUD, leaderboard UI, CRT styling
-public/game.js      the game: loop, entities, particles, synth audio, API client
+public/game-*.js    the game as ordered classic-script modules
+                    core (canvas/audio/DOM) → input → spawn → combat
+                    → update → render → draw → ui (HUD, scores, loop)
 worker.js           Cloudflare Worker: static assets + /api/scores (GET/POST) on D1
 manifest.json       deployment manifest (worker entry + static assets)
 wrangler.jsonc      local-dev config only (not used for deployment)

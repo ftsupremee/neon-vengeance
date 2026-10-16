@@ -1,4 +1,4 @@
-// ----------------------------------------------------------------- combat
+// ---------------------------------------------------------------- combat
 function fireShip() {
   const s = game.ship;
   const spd = 520;
@@ -38,7 +38,7 @@ function explode(x, y, count = 14, big = false) {
     game.parts.push({
       x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
       life: .4 + Math.random() * .5, t: 0,
-      color: [#'fff', '#ffe34d', '#ff2d95', '#00f0ff', '#ff6b1a'][Math.floor(Math.random() * 5)],
+      color: ['#fff', '#ffe34d', '#ff2d95', '#00f0ff', '#ff6b1a'][Math.floor(Math.random() * 5)],
       size: 1 + Math.random() * (big ? 4 : 2.5),
     });
   }
@@ -49,7 +49,10 @@ function megaBomb() {
   killEnemiesAt(game.ship.x, H, 900);
   for (const b of game.eBullets) b.dead = true;
   explode(W / 2, H / 2, 40, true);
-  AudioSys.igiExplode())
+  AudioSys.bigExplode();
+  game.banner = { text: 'MEGA BOMB!', until: game.time + 1.2 };
+  game.shake = 14;
+}
 
 function usePowerup(kind) {
   const s = game.ship;

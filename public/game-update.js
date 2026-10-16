@@ -1,4 +1,4 @@
-// ----------------------------------------------------------------- update
+// ---------------------------------------------------------------- update
 function update(dt) {
   game.time += dt;
   game.difficulty = game.time * DIFFICULTY_RAMP;
@@ -68,10 +68,47 @@ function update(dt) {
     if (en.hitFlash > 0) en.hitFlash -= dt;
     en.y += en.vy * dt;
     en.x += Math.sin(en.t * (en.type === 'zig' ? 5 : 1.5)) * en.drift * dt;
-    en.x = Math.max(en.w / 2, Math.min(W - en.7 ), y: Math.min Math
+    en.x = Math.max(en.w / 2, Math.min(W - en.w / 2, en.x));
+    // enemy fire
+    en.fireT -= dt;
+    if (en.fireT <= 0 && en.y > 10 && en.y < H * .7) {
+      en.fireT = (1.5 + Math.random() * 2.5) / (1 + game.difficulty * .5);
+      const dx = s.x - en.x, dy = s.y - en.y;
+      const d = Math.hypot(dx, dy) || 1;
+      const spd = 170 + game.difficulty * 40;
+      if (en.type === 'zig') {
+        game.eBullets.push({ x: en.x, y: en.y + en.h / 2, vx: 0, vy: spd * 1.3 });
+      } else {
+        game.eBullets.push({ x: en.x, y: en.y + en.h / 2, vx: dx / d * spd, vy: dy / d * spd });
+      }
+      AudioSys.enemyShoot();
+    }
+    if (en.y > H + en.h) { en.dead = true; }
+    // collide with player
+    if (s.invuln <= 0 && Math.abs(en.x - s.x) < (en.w + s.w) / 2 * .8 && Math.abs(en.y - s.y) < (en.h + s.h) / 2 * .8) {
+      damageEnemy(en);
+      hitPlayer();
+    }
+    // collide with bullets
+    for (const b of game.bullets) {
+      if (!b.dead && Math.abs(b.x - en.x) < en.w / 2 + 3 && Math.abs(b.y - en.y) < en.h / 2 + 6) {
+        b.dead = true;
+        damageEnemy(en, 1);
+      }
+    }
   }
-  genby enemies 
   game.enemies = game.enemies.filter((en) => !en.dead);
+
+  // enemy bullets
+  for (const b of game.eBullets) {
+    b.x += b.vx * dt; b.y += b.vy * dt;
+    if (b.y > H + 10 || b.y < -10 || b.x < -10 || b.x > W + 10) b.dead = true;
+    if (s.invuln <= 0 && Math.abs(b.x - s.x) < s.w / 2 && Math.abs(b.y - s.y) < s.h / 2) {
+      b.dead = true;
+      hitPlayer();
+    }
+  }
+  game.eBullets = game.eBullets.filter((b) => !b.dead);
 
   // powerups
   for (const p of game.powerups) {
@@ -85,8 +122,3 @@ function update(dt) {
   game.powerups = game.powerups.filter((p) => !p.dead);
 }
 
-         Math
-
-      genby player bullets
-    }
-  }
