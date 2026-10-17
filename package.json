@@ -1,0 +1,14 @@
+{
+  "name": "neon-vengeance",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Retro 80s arcade space shooter: Canvas + Web Audio, Cloudflare Worker + D1 leaderboard.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "test": "node --test test/worker.test.mjs"
+  },
+  "engines": { "node": ">=22.5" },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

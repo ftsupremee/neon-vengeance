@@ -1,26 +1,34 @@
-/* NEON VENGEANCE — worker: serves the game and a D1-backed high-score API. */
+/* NEON VENGEANCE — worker: serves the game and a D1-backed high-score API.
+ *
+ * The game and the API share one origin, so no CORS headers are sent.
+ * NOTE: scores are reported by the browser and cannot be verified server-side.
+ * Validation below only rejects malformed or absurd values.
+ */
 
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-};
+const MAX_SCORE = 100_000_000; // sanity cap against junk submissions
+const PER_NAME_LIMIT = 3;      // each callsign keeps only its best N scores
 
 // Idempotent schema init, run once per isolate.
 let tableReady = null;
 function ensureTable(db) {
   if (!tableReady) {
-    tableReady = db.batch([
-      db.prepare(
-        `CREATE TABLE IF NOT EXISTS scores (
-           id INTEGER PRIMARY KEY AUTOINCREMENT,
-           name TEXT NOT NULL,
-           score INTEGER NOT NULL,
-           created_at TEXT NOT NULL DEFAULT (datetime('now'))
-         )`
-      ),
-      db.prepare('CREATE INDEX IF NOT EXISTS idx_scores_score ON scores(score DESC)'),
-    ]);
+    tableReady = db
+      .batch([
+        db.prepare(
+          `CREATE TABLE IF NOT EXISTS scores (
+             id INTEGER PRIMARY KEY AUTOINCREMENT,
+             name TEXT NOT NULL,
+             score INTEGER NOT NULL,
+             created_at TEXT NOT NULL DEFAULT (datetime('now'))
+           )`
+        ),
+        db.prepare('CREATE INDEX IF NOT EXISTS idx_scores_score ON scores(score DESC)'),
+        db.prepare('CREATE INDEX IF NOT EXISTS idx_scores_name ON scores(name, score DESC)'),
+      ])
+      .catch((err) => {
+        tableReady = null; // allow a retry on the next request
+        throw err;
+      });
   }
   return tableReady;
 }
@@ -28,21 +36,18 @@ function ensureTable(db) {
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...CORS },
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
   });
 }
-
-const MAX_SCORE = 100_000_000; // sanity cap against junk submissions
 
 async function handleScores(request, db) {
   await ensureTable(db);
 
-  const url = new URL(request.url);
-
   if (request.method === 'GET') {
-    const limit = Math.min(parseInt(url.searchParams.get('limit') || '10', 10) || 10, 100);
+    const url = new URL(request.url);
+    const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '10', 10) || 10, 1), 100);
     const { results } = await db
-      .prepare('SELECT name, score, created_at FROM scores ORDER BY score DESC, created_at ASC LIMIT ?')
+      .prepare('SELECT name, score, created_at FROM scores ORDER BY score DESC, created_at ASC LIMIT ?1')
       .bind(limit)
       .all();
     return json({ scores: results });
@@ -58,6 +63,7 @@ async function handleScores(request, db) {
   } catch {
     return json({ error: 'invalid JSON' }, 400);
   }
+  if (body === null || typeof body !== 'object') return json({ error: 'invalid JSON' }, 400);
 
   const name = typeof body.name === 'string' ? body.name.trim().toUpperCase().slice(0, 10) : '';
   const score = Math.floor(Number(body.score));
@@ -67,51 +73,48 @@ async function handleScores(request, db) {
     return json({ error: 'invalid score' }, 400);
   }
 
-  // Basic anti-spam: same name may hold only their top 3 entries.
-  const count = await db
-    .prepare(
-      `SELECT COUNT(*) AS n FROM scores WHERE name = ?1
-       AND score <= ?2`
-    )
+  // Per-name cap: if this name already has N scores at least as good, the new one is not kept.
+  const better = await db
+    .prepare('SELECT COUNT(*) AS n FROM scores WHERE name = ?1 AND score >= ?2')
     .bind(name, score)
     .first();
-  if (count && count.n >= 3) {
-    const deleted = await db
-      .prepare(
-        `DELETE FROM scores WHERE id IN (
-           SELECT id FROM scores WHERE name = ?1 AND score <= ?2
-           ORDER BY created_at ASC LIMIT ?3
-         )`
-      )
-      .bind(name, score, Math.max(1, count.n - 2))
-      .run();
-    if (!deleted.meta || !deleted.meta.changes) {
-      return json({ error: 'too many entries for this name' }, 429);
-    }
+  if (better && better.n >= PER_NAME_LIMIT) {
+    return json({ ok: true, saved: false }, 200);
   }
 
-  await db.prepare('INSERT INTO scores (name, score) VALUES (?1, ?2)').bind(name, score).run();
+  // Insert, then prune everything beyond this name's best N, atomically.
+  await db.batch([
+    db.prepare('INSERT INTO scores (name, score) VALUES (?1, ?2)').bind(name, score),
+    db
+      .prepare(
+        `DELETE FROM scores WHERE name = ?1 AND id NOT IN (
+           SELECT id FROM scores WHERE name = ?1
+           ORDER BY score DESC, created_at ASC, id ASC LIMIT ?2
+         )`
+      )
+      .bind(name, PER_NAME_LIMIT),
+  ]);
+
   const rankRow = await db
     .prepare('SELECT COUNT(*) + 1 AS rank FROM scores WHERE score > ?1')
     .bind(score)
     .first();
 
-  return json({ ok: true, rank: rankRow ? rankRow.rank : 1 }, 201);
+  return json({ ok: true, saved: true, rank: rankRow ? rankRow.rank : 1 }, 201);
 }
 
 // ---------------------------------------------------------------- worker entry
 export default {
-  async fetch(request, env, ctx) {
+  async fetch(request, env) {
     const url = new URL(request.url);
-
-    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
 
     if (url.pathname === '/api/scores') {
       if (!env.DB) return json({ error: 'database unavailable' }, 503);
       try {
         return await handleScores(request, env.DB);
       } catch (err) {
-        return json({ error: 'internal error', detail: String(err) }, 500);
+        console.error('scores handler failed:', err); // details stay in the logs, not the response
+        return json({ error: 'internal error' }, 500);
       }
     }
 

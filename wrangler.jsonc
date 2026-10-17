@@ -1,5 +1,6 @@
 {
-  // Local-dev config only; deployment uses manifest.json via the Sites SDK.
+  // Local dev only (`npm run dev`). Deployment reads manifest.json via the Sites SDK.
+  // If you deploy with `wrangler deploy` instead, delete manifest.json and add a real D1 database_id below.
   "name": "neon-vengeance",
   "main": "worker.js",
   "compatibility_date": "2026-10-16",
