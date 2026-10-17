@@ -1,3 +1,5 @@
+/* NEON VENGEANCE — update: per-frame simulation (movement, waves, collisions). */
+
 // ---------------------------------------------------------------- update
 function update(dt) {
   game.time += dt;

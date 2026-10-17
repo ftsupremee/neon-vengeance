@@ -1,5 +1,5 @@
 /* NEON VENGEANCE — retro 80s arcade space shooter
-   Canvas graphics + Web Audio synth SFX + D1-backed high scores. */
+   Core: constants, canvas, DOM references, synthesized audio, safe storage. */
 'use strict';
 
 // ---------------------------------------------------------------- constants
@@ -34,6 +34,19 @@ const el = {
   playerName:    document.getElementById('player-name'),
   saveButton:    document.getElementById('save-score'),
   saveMsg:       document.getElementById('save-msg'),
+  restartButton: document.getElementById('restart-button'),
+  gameoverHint:  document.getElementById('gameover-hint'),
+};
+
+// ---------------------------------------------------------------- storage
+// localStorage throws in some private-browsing modes; never let that break the game.
+const storage = {
+  get(key, fallback = '') {
+    try { return localStorage.getItem(key) ?? fallback; } catch { return fallback; }
+  },
+  set(key, value) {
+    try { localStorage.setItem(key, value); } catch { /* storage unavailable: ignore */ }
+  },
 };
 
 // ---------------------------------------------------------------- audio (synth SFX)

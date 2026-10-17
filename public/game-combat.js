@@ -1,3 +1,5 @@
+/* NEON VENGEANCE — combat: firing, damage, explosions, power-ups, player hits. */
+
 // ---------------------------------------------------------------- combat
 function fireShip() {
   const s = game.ship;
@@ -13,7 +15,10 @@ function fireShip() {
 function killEnemiesAt(x, y, r, scoreMult) {
   for (const en of game.enemies) {
     const dx = en.x - x, dy = en.y - y;
-    if (dx * dx + dy * dy < r * r) damageEnemy(en, scoreMult);
+    if (dx * dx + dy * dy < r * r) {
+      en.hp = 1; // area kills are lethal regardless of remaining hp (MEGA BOMB clears tanks too)
+      damageEnemy(en, scoreMult);
+    }
   }
 }
 

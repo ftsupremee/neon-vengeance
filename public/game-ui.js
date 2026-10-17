@@ -1,7 +1,10 @@
+/* NEON VENGEANCE — UI: leaderboard, game-over flow and the main loop. */
+
 // ---------------------------------------------------------------- high scores
-const LS_KEY = 'neon-vengeance-top';
+const LS_TOP = 'neon-vengeance-top';
+const LS_NAME = 'neon-vengeance-name';
 function topScore() {
-  try { return parseInt(localStorage.getItem(LS_KEY) || '0', 10) || 0; } catch { return 0; }
+  return parseInt(storage.get(LS_TOP, '0'), 10) || 0;
 }
 
 async function loadScores() {
@@ -38,33 +41,45 @@ function gameOver() {
   el.gameoverScreen.classList.remove('hidden');
   el.saveMsg.textContent = '';
   el.nameForm.style.display = 'flex';
-  el.playerName.value = localStorage.getItem('neon-vengeance-name') || '';
-  if (game.score > topScore()) localStorage.setItem(LS_KEY, String(game.score));
+  el.restartButton.classList.add('hidden');
+  el.gameoverHint.textContent = '▸ ENTER: SAVE   ESC: SKIP';
+  el.playerName.value = storage.get(LS_NAME);
+  if (game.score > topScore()) storage.set(LS_TOP, String(game.score));
   setTimeout(() => el.playerName.focus(), 50);
+}
+
+// Leaves name entry (saved or skipped) and enables restart via Enter or the button.
+function finishGameOver() {
+  game.state = STATE.GAMEOVER;
+  el.nameForm.style.display = 'none';
+  el.restartButton.classList.remove('hidden');
+  el.gameoverHint.textContent = '▸ PRESS ENTER TO PLAY AGAIN';
+  el.playerName.blur();
 }
 
 el.nameForm.addEventListener('submit', async (e) => {
   e.preventDefault();
+  if (game.state !== STATE.ENTER_NAME) return;
   const name = el.playerName.value.trim().toUpperCase();
   if (name.length < 3) { el.saveMsg.textContent = 'NAME MUST BE 3+ CHARS'; return; }
   el.saveButton.disabled = true;
   el.saveMsg.textContent = 'SAVING...';
   try {
-    localStorage.setItem('neon-vengeance-name', name);
+    storage.set(LS_NAME, name);
     const res = await fetch('/api/scores', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, score: game.score }),
     });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.error || 'HTTP ' + res.status);
-    }
-    el.saveMsg.textContent = 'SCORE SAVED! ▸ TOP 10 UPDATED';
-    el.nameForm.style.display = 'none';
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'HTTP ' + res.status);
+    el.saveMsg.textContent = data.saved === false
+      ? 'NOT IN YOUR PERSONAL TOP 3'
+      : 'SCORE SAVED! ▸ RANK #' + data.rank;
+    finishGameOver();
     loadScores();
   } catch (err) {
-    el.saveMsg.textContent = 'SAVE FAILED: ' + err.message;
+    el.saveMsg.textContent = 'SAVE FAILED: ' + err.message + ' (ESC TO SKIP)';
   } finally {
     el.saveButton.disabled = false;
   }
@@ -93,7 +108,6 @@ function frame(now) {
   last = now;
   update(dt);
   draw();
-  spacePressedEdge = false;
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);

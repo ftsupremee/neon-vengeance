@@ -1,73 +1,119 @@
-// ---------------------------------------------------------------- draw
-function drawShip(s) {
-  if (s.invuln > 0 && Math.floor(game.time * 12) % 2 === 0 && game.state === STATE.PLAYING) return;
-  const px = Math.round(s.x), py = Math.round(s.y);
-  ctx.save();
-  ctx.translate(px, py);
-  // engine glow
-  const fl = Math.sin(game.time * 40) > 0 ? '#00f0ff' : '#ffe34d';
-  ctx.fillStyle = fl;
-  ctx.fillRect(-2, 12, 4, 5);
-  // shield bubble
-  if (s.powerups.shield > 0) {
-    ctx.strokeStyle = 'rgba(0,240,255,' + (.5 + .3 * Math.sin(game.time * 8)) + ')';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(0, 0, 22, 0, Math.PI * 2);
-    ctx.stroke();
-  }
-  // hull
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(-1, -12, 2, 5);
-  ctx.fillStyle = '#00f0ff';
-  ctx.fillRect(-11, -6, 22, 12);
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(-11, -6, 22, 3);
-  ctx.fillStyle = '#00f0ff';
-  ctx.fillRect(-14, 2, 5, 8);
-  ctx.fillRect(9, 2, 5, 8);
-  ctx.fillStyle = '#ff2d95';
-  ctx.fillRect(-4, 4, 8, 5);
-  ctx.restore();
-}
+/* NEON VENGEANCE — render: draws the scene, HUD, banners and the pause overlay. */
 
-function drawEnemy(en) {
-  const px = Math.round(en.x), py = Math.round(en.y);
+function draw() {
+  ctx.fillStyle = '#05010d';
+  ctx.fillRect(0, 0, W, H);
+
   ctx.save();
-  ctx.translate(px, py);
-  const flash = en.hitFlash > 0;
-  if (en.type === 'tank') {
-    ctx.fillStyle = flash ? '#fff' : '#9b1fe3';
-    ctx.fillRect(-16, -10, 32, 20);
-    ctx.fillStyle = flash ? '#fff' : '#ff2d95';
-    ctx.fillRect(-10, -14, 20, 5);
-    ctx.fillRect(-14, 10, 28, 4);
-    ctx.fillStyle = flash ? '#9b1fe3' : '#ffe34d';
-    ctx.fillRect(-4, -4, 8, 8);
-  } else if (en.type === 'zig') {
-    ctx.fillStyle = flash ? '#fff' : '#ffe34d';
-    ctx.fillRect(-2, -12, 4, 24);
-    ctx.fillRect(-12, -12, 8, 8);
-    ctx.fillRect(4, -12, 8, 8);
-    ctx.fillRect(-8, 4, 16, 6);
-    ctx.fillStyle = flash ? '#ffe34d' : '#ff6b1a';
-    ctx.fillRect(-3, -8, 6, 5);
-  } else {
-    ctx.fillStyle = flash ? '#fff' : '#4dff88';
-    ctx.fillRect(-10, -8, 20, 16);
-    ctx.fillStyle = flash ? '#4dff88' : '#0a2f14';
-    ctx.fillRect(-6, -4, 12, 5);
-    ctx.fillStyle = flash ? '#0a2f14' : '#ffe34d';
-    ctx.fillRect(-8, -10, 4, 4);
-    ctx.fillRect(4, -10, 4, 4);
+  if (game.shake > 0) {
+    ctx.translate((Math.random() * 2 - 1) * game.shake, (Math.random() * 2 - 1) * game.shake);
   }
-  // hp pips for tanks
-  if (en.type === 'tank' && en.maxHp > 1) {
-    for (let i = 0; i < en.hp; i++) {
-      ctx.fillStyle = '#39ff14';
-      ctx.fillRect(-12 + i * 9, -18, 7, 3);
+
+  // stars
+  for (const st of game.stars) {
+    ctx.globalAlpha = st.a;
+    ctx.fillStyle = st.tint;
+    ctx.fillRect(Math.round(st.x), Math.round(st.y), st.size, st.size);
+  }
+  ctx.globalAlpha = 1;
+
+  if (game.state !== STATE.TITLE) {
+    // bullets
+    for (const b of game.bullets) {
+      ctx.fillStyle = '#ffe34d';
+      ctx.fillRect(Math.round(b.x) - 2, Math.round(b.y) - 8, 4, 12);
+    }
+    for (const b of game.eBullets) {
+      ctx.fillStyle = '#ff2d95';
+      ctx.fillRect(Math.round(b.x) - 3, Math.round(b.y) - 3, 6, 6);
+    }
+
+    // powerups
+    for (const p of game.powerups) {
+      const info = POWERUP_TYPES[p.kind];
+      const bob = Math.sin(p.t * 6) * 3;
+      const x = Math.round(p.x), y = Math.round(p.y + bob);
+      ctx.strokeStyle = info.color;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x - 10, y - 10, 20, 20);
+      ctx.fillStyle = info.color;
+      ctx.font = '10px "Press Start 2P", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(info.glyph, x, y + 1);
+    }
+
+    // enemies
+    for (const en of game.enemies) drawEnemy(en);
+
+    // ship
+    if (game.state === STATE.PLAYING || game.state === STATE.PAUSED) drawShip(game.ship);
+
+    // particles
+    for (const p of game.parts) {
+      ctx.globalAlpha = 1 - p.t / p.life;
+      ctx.fillStyle = p.color;
+      ctx.fillRect(Math.round(p.x), Math.round(p.y), p.size, p.size);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.restore();
+
+  // HUD
+  if (game.state !== STATE.TITLE) {
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#ff2d95';
+    ctx.font = '12px "Press Start 2P", monospace';
+    ctx.fillText('SCORE', 10, 22);
+    ctx.fillStyle = '#fff';
+    ctx.fillText(String(game.score).padStart(7, '0'), 10, 38);
+    ctx.fillStyle = '#ffe34d';
+    ctx.fillText('HI ' + String(topScore()).padStart(7, '0'), 150, 22);
+    // lives as little ships
+    ctx.fillStyle = '#00f0ff';
+    for (let i = 0; i < game.lives; i++) {
+      ctx.fillRect(W - 20 - i * 16, 12, 10, 4);
+      ctx.fillRect(W - 18 - i * 16, 16, 4, 4);
+    }
+    // wave
+    ctx.fillStyle = '#39ff14';
+    ctx.textAlign = 'right';
+    ctx.fillText('WAVE ' + game.wave, W - 10, 38);
+    // active powerup timers
+    let ty = 56;
+    ctx.textAlign = 'left';
+    for (const k of Object.keys(game.ship.powerups)) {
+      if (game.ship.powerups[k] > 0) {
+        ctx.fillStyle = POWERUP_TYPES[k].color;
+        ctx.fillText(POWERUP_TYPES[k].label, 10, ty);
+        ctx.textAlign = 'right';
+        ctx.fillText(Math.ceil(game.ship.powerups[k]) + 's', 90, ty);
+        ctx.textAlign = 'left';
+        ty += 16;
+      }
+    }
+    // banner
+    if (game.banner && game.time < game.banner.until) {
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ffe34d';
+      ctx.font = '16px "Press Start 2P", monospace';
+      ctx.globalAlpha = Math.min(1, (game.banner.until - game.time) * 2);
+      ctx.fillText(game.banner.text, W / 2, H * .35);
+      ctx.globalAlpha = 1;
     }
   }
-  ctx.restore();
+
+  if (game.state === STATE.PAUSED) {
+    ctx.fillStyle = 'rgba(3,0,10,.7)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#00f0ff';
+    ctx.font = '20px "Press Start 2P", monospace';
+    ctx.fillText('PAUSED', W / 2, H / 2);
+    ctx.font = '10px "Press Start 2P", monospace';
+    ctx.fillStyle = '#8f8fae';
+    ctx.fillText('PRESS P TO RESUME', W / 2, H / 2 + 30);
+  }
 }
 

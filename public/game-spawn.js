@@ -1,3 +1,5 @@
+/* NEON VENGEANCE — spawning: waves, enemies and power-up drops. */
+
 function spawnWave() {
   game.wave++;
   game.enemiesRemaining = Math.min(6 + game.wave * 2, 26);
@@ -6,11 +8,18 @@ function spawnWave() {
   game.banner = { text: 'WAVE ' + game.wave, until: game.time + 1.6 };
 }
 
+function pickEnemyType(wave, roll = Math.random()) {
+  // Independent chances that grow with the wave, so every type stays reachable.
+  // wave 1: 8% tank / 14% zig · wave 5: 20% / 30% · wave 7+: 25% / 35% (rest are drones)
+  const tankChance = Math.min(.05 + wave * .03, .25);
+  const zigChance  = Math.min(.10 + wave * .04, .35);
+  if (roll < tankChance) return 'tank';
+  if (roll < tankChance + zigChance) return 'zig';
+  return 'drone';
+}
+
 function spawnEnemy() {
-  const r = Math.random();
-  let type = 'drone';
-  if (r < Math.min(.1 + game.wave * .04, .35)) type = 'zig';
-  else if (r < Math.min(.15 + game.wave * .03, .3)) type = 'tank';
+  const type = pickEnemyType(game.wave);
   const hp = type === 'tank' ? 3 : 1;
   const size = type === 'tank' ? 34 : 26;
   game.enemies.push({

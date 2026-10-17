@@ -218,18 +218,21 @@
         <button id="save-score" class="btn" type="submit">SAVE SCORE</button>
       </form>
       <div id="save-msg"></div>
-      <div class="hint"><span class="blink">▸ PRESS ENTER TO PLAY AGAIN</span></div>
+      <button id="restart-button" class="btn hidden" type="button">▶ PLAY AGAIN</button>
+      <div class="hint"><span id="gameover-hint" class="blink"></span></div>
     </div>
   </div>
 </div>
 
-<script src="game-core.js"></script>
-<script src="game-input.js"></script>
-<script src="game-spawn.js"></script>
-<script src="game-combat.js"></script>
-<script src="game-update.js"></script>
-<script src="game-render.js"></script>
-<script src="game-draw.js"></script>
-<script src="game-ui.js"></script>
+<!-- Classic scripts sharing one global scope: order matters. -->
+<script src="game-core.js"></script>    <!-- constants, canvas, DOM refs, audio, storage -->
+<script src="game-state.js"></script>   <!-- game state, ship factory, starfield -->
+<script src="game-input.js"></script>   <!-- keyboard / pointer handlers -->
+<script src="game-spawn.js"></script>   <!-- waves, enemies, power-up drops -->
+<script src="game-combat.js"></script>  <!-- firing, damage, power-ups, player hits -->
+<script src="game-update.js"></script>  <!-- per-frame simulation -->
+<script src="game-sprites.js"></script> <!-- drawShip / drawEnemy -->
+<script src="game-render.js"></script>  <!-- draw(): scene + HUD -->
+<script src="game-ui.js"></script>      <!-- leaderboard, game-over flow, main loop -->
 </body>
 </html>
